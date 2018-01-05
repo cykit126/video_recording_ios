@@ -15,6 +15,7 @@
     AVCaptureSession* mCameraSession;
     AVAssetWriter* mWriter;
     AVAssetWriterInput* mVideoInput;
+    AVAssetWriterInputPixelBufferAdaptor* _videoInputAdaptor;
     AVAssetWriterInput* mAudioInput;
     AVCaptureVideoDataOutput* _videoOutput;
     AVCaptureAudioDataOutput* _audioOutput;
@@ -162,7 +163,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     if (type == kCMMediaType_Video)
     {
         if (mVideoInput.readyForMoreMediaData) {
-            if (![mVideoInput appendSampleBuffer:sampleBuffer])
+            CVPixelBufferRef buffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+            if (![_videoInputAdaptor appendPixelBuffer:buffer
+                                  withPresentationTime:pts])
             {
                 AVAssetWriterStatus status = mWriter.status;
                 NSLog(@"status:%d", (int)status);
@@ -221,6 +224,12 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         mVideoInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo
                                                          outputSettings:videoSettings];
         mVideoInput.expectsMediaDataInRealTime = YES;
+        
+//        NSDictionary* attrs = [NSDictionary dictionaryWithObjectsAndKeys:
+//                               [NSNumber numberWithInt:kCVPixelFormatType_32BGRA], kCVPixelBufferPixelFormatTypeKey,
+//                               nil];
+        _videoInputAdaptor = [AVAssetWriterInputPixelBufferAdaptor assetWriterInputPixelBufferAdaptorWithAssetWriterInput:mVideoInput sourcePixelBufferAttributes:nil];
+        
         [mWriter addInput:mVideoInput];
     }
     
